@@ -47,7 +47,6 @@ node_modules/
 jspm_packages/
 my-db/
 build/
-docs/
 dist/
 # TypeScript v1 declaration files
 typings/
