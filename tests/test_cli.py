@@ -154,3 +154,55 @@ def test_arrangement_saved_and_loaded(tmp_path):
     s.handle("new")
     s.handle("load arr")
     assert s.ready and s.hand_ids() == order
+
+
+def test_names_toggle(tmp_path):
+    s = make_session(tmp_path, ready=False)
+    s.console.file.truncate(0)
+    s.cmd_hand([])
+    compact = s.console.file.getvalue()
+    assert "將" in compact or "士" in compact
+    assert " đỏ" not in compact and " xanh" not in compact
+    s.handle("names on")
+    assert s.names
+    s.console.file.truncate(0)
+    s.cmd_hand([])
+    assert any(w in s.console.file.getvalue() for w in (" đỏ", " xanh", " vàng", " trắng"))
+
+
+def test_meld_area_build_split_check(tmp_path):
+    s = make_session(tmp_path, seed=42, ready=False)
+    s.handle("sort meld")
+    a = s.arrangement
+    assert a.mode == "meld" and a.groups
+    rep = a.check(s.engine, "D")
+    assert rep.loose == rep.optimal_trash  # tự xếp = tối ưu
+    n_groups = len(a.groups)
+    s.handle("tach all")
+    assert a.groups == []
+    # gom tay: lấy 1 bộ hợp lệ do máy tìm, tìm số thứ tự hiện tại rồi `bo`
+    s.handle("sort meld")
+    target = a.groups[0]
+    s.handle("tach 1")
+    assert len(a.groups) == n_groups - 1
+    nums = [str(s.index_of(i)) for i in target]
+    s.handle("bo " + " ".join(nums))
+    assert a.groups[-1] == target
+    assert "Đã gom bộ" in s.console.file.getvalue()
+    s.handle("check")
+    assert "KIỂM TRA BÀI" in s.console.file.getvalue()
+    assert s.engine.action_log == []  # xếp bộ không phải nước đi
+    assert sorted(s.hand_ids()) == sorted(s.engine.state.hands["D"])
+
+
+def test_invalid_group_marked(tmp_path):
+    s = make_session(tmp_path, seed=42, ready=False)
+    s.handle("sort color")
+    hand = s.hand_ids()
+    # hai quân khác loại khác màu → không hợp lệ
+    from tusac.deck import card
+    i, j = next((x, y) for x in range(len(hand)) for y in range(x + 1, len(hand))
+                if card(hand[x]).kind != card(hand[y]).kind and card(hand[x]).rank != card(hand[y]).rank)
+    s.handle(f"bo {i + 1} {j + 1}")
+    rep = s.arrangement.check(s.engine, "D")
+    assert not rep.lines[-1][1]

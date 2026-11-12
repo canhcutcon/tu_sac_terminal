@@ -27,9 +27,13 @@ pytest -q
 ## Cách chơi
 
 1. **Xếp bài** – sau khi chia, ván chưa bắt đầu. Bạn xếp bài tùy ý rồi gõ `ready`:
-   - `sort color` (theo màu), `sort rank` (theo loại), `sort meld` (theo phe, rác để cuối)
+   - `sort color` (theo màu), `sort rank` (theo loại)
+   - **Khu vực xếp bộ**: `sort meld` tự xếp bộ tối ưu; `bo 3 7 9` tự gom quân thành bộ;
+     `tach 2` / `tach all` trả bộ về "Rác / chờ"; `check` kiểm tra bộ nào hợp lệ (✓/✗),
+     còn bao nhiêu rác và cách xếp đã tối ưu chưa.
    - `move 5 1` chuyển quân số 5 lên vị trí 1, `swap 3 8` đổi chỗ hai quân (chế độ tự do).
      Cách xếp được giữ suốt ván; quân mới vào nằm cuối tay. Có thể xếp lại bất cứ lúc nào.
+   - Quân bài mặc định chỉ hiện chữ Hán tô màu; `names on` để hiện thêm tên tiếng Việt.
 2. **Tới lượt đánh**: `discard <số>`.
 3. **Có quân vừa ra / vừa bốc mà bạn ăn được**: game liệt kê lựa chọn `a) b) ...` →
    `claim a`, hoặc tự chọn quân trên tay `claim 3 7`; không ăn thì `pass`.

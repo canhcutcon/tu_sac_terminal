@@ -19,7 +19,7 @@ from .engine import Engine
 from .melds import identify_meld
 from .models import MELD_VI, SEATS, Action, Claim, Discard, Draw, Pass, Phase, next_seat
 from .persistence import SaveError, load_game, safe_save_path, save_game
-from .arrange import MODE_VI, MODES, HandArrangement
+from .arrange import MODE_VI, MODES, HandArrangement, group_kind
 from .render import card_label, card_text, render_hand_rows, render_table
 from .rules import load_ruleset
 from .rules.training import TableRuleset
@@ -33,9 +33,13 @@ HELP = """\
 [bold]Xếp bài (trước ván và bất cứ lúc nào)[/bold]
   sort color            Xếp theo màu (mặc định)
   sort rank             Xếp theo loại quân (Tướng, Sĩ, ... Tốt)
-  sort meld             Xếp theo phe đã thành, quân rác để cuối
+  sort meld             Mở KHU VỰC XẾP BỘ và tự xếp bộ tối ưu (rác / chờ để cuối)
+  bo 3 7 9              Gom quân số 3, 7, 9 thành một bộ (tự xếp bộ bằng tay)
+  tach 2 / tach all     Tách bộ 2 (hoặc tất cả) trả về Rác / chờ
+  check                 Kiểm tra bài: bộ nào hợp lệ, còn bao nhiêu rác, xếp đã tối ưu chưa
   move 5 1              Chuyển quân số 5 lên vị trí 1 (chuyển sang chế độ tự xếp)
   swap 3 8              Đổi chỗ quân số 3 và số 8
+  names on|off          Bật/tắt tên tiếng Việt trên quân (mặc định tắt: chỉ chữ Hán + màu)
   ready (r)             Sẵn sàng — bắt đầu ván (các nhà bot chỉ chơi sau khi bạn ready)
 
 [bold]Lệnh trong ván[/bold]
@@ -99,6 +103,7 @@ class Session:
         self.tally: Counter = Counter()
         self.running = True
         self.arrangement = HandArrangement()
+        self.names = False  # quân bài chỉ hiện chữ Hán tô màu; `names on` để hiện thêm tên tiếng Việt
         self.start_round(seed, dealer)
 
     # ------------------------------------------------------------ round lifecycle
@@ -114,6 +119,7 @@ class Session:
         self.ready = self.human is None  # người chơi xếp bài xong, gõ ready mới bắt đầu
         if self.arrangement.mode == "free":
             self.arrangement.custom = []
+        self.arrangement.groups = []
         self.console.print()
         self.console.rule(f"[bold cyan]Ván #{self.round_no} — seed {seed} — nhà cái {dealer}")
         self.flush_events()
@@ -140,8 +146,8 @@ class Session:
     def hand_view(self):
         assert self.human
         rows = self.arrangement.rows(self.engine, self.human)
-        order = [cid for _, _, ids in rows for cid in ids]
-        return render_hand_rows(rows, order, self.ascii, width=max(40, self.console.width - 6))
+        order = [cid for _, _, ids, _ in rows for cid in ids]
+        return render_hand_rows(rows, order, self.ascii, width=max(40, self.console.width - 6), names=self.names)
 
     def info(self, msg: str, style: str = "") -> None:
         self.console.print(Text(msg, style=style))
@@ -192,7 +198,7 @@ class Session:
         if not self.ready:
             t.append("✋ XẾP BÀI trước khi chơi", style="bold yellow")
             t.append(f" (đang xếp {MODE_VI[self.arrangement.mode]})\n")
-            t.append("   sort color | sort rank | sort meld   ·   move <từ> <đến>   ·   swap <a> <b>   ·   hint\n")
+            t.append("   sort color | sort rank | sort meld   ·   bo 3 7 9 | tach 2 | check   ·   move 5 1 | swap 2 8\n")
             t.append("   → gõ ", style="dim")
             t.append("ready", style="bold green")
             t.append(" khi sẵn sàng để bắt đầu ván", style="dim")
@@ -240,7 +246,8 @@ class Session:
                 tally=self.tally,
                 prompt=self.prompt_text(),
                 hand_view=self.hand_view() if self.human else None,
-                hand_title=f" — xếp {MODE_VI[self.arrangement.mode]}",
+                hand_title=self.arrangement.title(self.engine, self.human) if self.human else "",
+                names=self.names,
             )
         )
 
@@ -323,7 +330,8 @@ class Session:
             return
         cmd, args = tokens[0].lower(), tokens[1:]
         aliases = {"h": "hand", "t": "table", "x": "discard", "c": "claim", "p": "pass", "d": "draw",
-                   "u": "undo", "q": "quit", "exit": "quit", "?": "help", "r": "ready", "xep": "sort"}
+                   "u": "undo", "q": "quit", "exit": "quit", "?": "help", "r": "ready", "xep": "sort",
+                   "group": "bo", "split": "tach", "kiemtra": "check"}
         cmd = aliases.get(cmd, cmd)
         handler = getattr(self, f"cmd_{cmd}", None)
         if handler is None:
@@ -519,8 +527,13 @@ class Session:
         if len(args) != 1 or args[0].lower() not in MODES[:3]:
             self.info("Cú pháp: sort color | sort rank | sort meld", "red")
             return
-        self.arrangement.set_mode(args[0].lower())
-        self.info(f"↻ Đã xếp bài {MODE_VI[self.arrangement.mode]}.", "green")
+        mode = args[0].lower()
+        if mode == "meld":
+            self.arrangement.auto_groups(self.engine, self.human)  # type: ignore[arg-type]
+            self.info("↻ Đã tự xếp bộ tối ưu vào khu vực xếp bộ (sửa bằng `bo` / `tach`).", "green")
+        else:
+            self.arrangement.set_mode(mode)
+            self.info(f"↻ Đã xếp bài {MODE_VI[mode]}.", "green")
         self.cmd_hand([])
 
     def _two_numbers(self, args: list[str], usage: str) -> tuple[int, int] | None:
@@ -549,6 +562,64 @@ class Session:
             self.info(str(exc), "red")
             return
         self.info(f"↻ Đã đổi chỗ {card(x).name_vi()} ↔ {card(y).name_vi()}.", "green")
+        self.cmd_hand([])
+
+    def cmd_bo(self, args: list[str]) -> None:
+        if not self._need_hand():
+            return
+        if not args or not all(a.isdigit() for a in args):
+            self.info("Cú pháp: bo <số> <số> ... (1–4 quân)", "red")
+            return
+        try:
+            ids = self.arrangement.make_group(self.engine, self.human, [int(a) for a in args])  # type: ignore[arg-type]
+        except ValueError as exc:
+            self.info(str(exc), "red")
+            return
+        kind = group_kind(ids, self.rules.meld_rules)
+        names = " + ".join(card(i).name_vi() for i in ids)
+        if kind:
+            self.info(f"✓ Đã gom bộ: {names} → {kind}", "green")
+        else:
+            self.info(f"✗ Đã gom: {names} — chưa phải bộ hợp lệ", "yellow")
+        self.cmd_hand([])
+
+    def cmd_tach(self, args: list[str]) -> None:
+        if not self._need_hand():
+            return
+        if len(args) != 1:
+            self.info("Cú pháp: tach <số bộ> | tach all", "red")
+            return
+        try:
+            n = self.arrangement.split_group(self.engine, self.human, args[0].lower())  # type: ignore[arg-type]
+        except ValueError as exc:
+            self.info(str(exc), "red")
+            return
+        self.info(f"↺ Đã tách {n} bộ về Rác / chờ.", "green")
+        self.cmd_hand([])
+
+    def cmd_check(self, args: list[str]) -> None:
+        if not self._need_hand():
+            return
+        rep = self.arrangement.check(self.engine, self.human)  # type: ignore[arg-type]
+        self.info(f"KIỂM TRA BÀI — {rep.valid_groups} bộ hợp lệ", "bold")
+        for line, ok in rep.lines:
+            self.info(f"  {'✓' if ok else '✗'} {line}", "green" if ok else "red")
+        if not rep.lines:
+            self.info("  (chưa gom bộ nào — dùng `bo 3 7 9` hoặc `sort meld`)", "dim")
+        self.info(f"  Rác / chờ theo cách xếp của bạn: {rep.loose} quân", "yellow")
+        if rep.loose == 0:
+            self.info("  ★ Mọi quân đều đã vào bộ hợp lệ — bài TỚI!", "bold magenta")
+        elif rep.loose > rep.optimal_trash:
+            self.info(f"  Gợi ý: xếp tối ưu chỉ còn {rep.optimal_trash} rác (gõ `sort meld` để xem).", "cyan")
+        else:
+            self.info("  Cách xếp của bạn đã tối ưu.", "cyan")
+
+    def cmd_names(self, args: list[str]) -> None:
+        if len(args) != 1 or args[0].lower() not in ("on", "off"):
+            self.info("Cú pháp: names on | names off", "red")
+            return
+        self.names = args[0].lower() == "on"
+        self.info("Hiện tên tiếng Việt trên quân." if self.names else "Chỉ hiện chữ Hán tô màu.", "green")
         self.cmd_hand([])
 
     def cmd_ready(self, args: list[str]) -> None:

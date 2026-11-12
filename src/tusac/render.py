@@ -24,12 +24,14 @@ def card_label(c: Card, ascii_only: bool) -> str:
     return c.name_vi() if ascii_only else f"{c.name_vi()} {RANK_HAN[c.rank]}"
 
 
-def card_text(c: Card, ascii_only: bool, index: int | None = None) -> Text:
+def card_text(c: Card, ascii_only: bool, index: int | None = None, names: bool = True) -> Text:
+    """names=False: chỉ in chữ Hán tô màu. Chế độ ASCII luôn in tên (không có chữ Hán)."""
     t = Text()
     if index is not None:
         t.append(f"[{index:02d}]", style="cyan")
         t.append(" ")
-    t.append(card_label(c, ascii_only), style=COLOR_STYLE[c.color])
+    label = card_label(c, ascii_only) if names or ascii_only else RANK_HAN[c.rank]
+    t.append(label, style=COLOR_STYLE[c.color])
     return t
 
 
@@ -38,28 +40,31 @@ def _rule(ascii_only: bool) -> Rule:
 
 
 def render_hand_rows(
-    rows: list[tuple[str, str, list[str]]], order: list[str], ascii_only: bool, width: int = 100
+    rows: list[tuple[str, str, list[str], str]], order: list[str], ascii_only: bool, width: int = 100,
+    names: bool = True,
 ) -> RenderableType:
-    """Vẽ các hàng (nhãn, style, ids); số thứ tự theo `order`; xuống dòng theo nguyên quân."""
+    """Vẽ các hàng (nhãn, style, ids, ghi chú); số thứ tự theo `order`; xuống dòng theo nguyên quân."""
     index = {cid: n for n, cid in enumerate(order, 1)}
-    label_w = max((len(label) for label, _, ids in rows if ids), default=4)
+    label_w = max((len(label) for label, _, ids, note in rows if ids or note), default=4)
     grid = Table.grid(padding=(0, 1))
     grid.add_column(no_wrap=True)
     grid.add_column(no_wrap=True)
     avail = max(24, width - label_w - 2)
-    for label, style, ids in rows:
-        if not ids:
+    for label, style, ids, note in rows:
+        if not ids and not note:
             continue
         row = Text()
         line_len = 0
         for cid in ids:
-            piece = card_text(card(cid), ascii_only, index[cid])
+            piece = card_text(card(cid), ascii_only, index[cid], names)
             if line_len and line_len + piece.cell_len > avail:
                 row.append("\n")
                 line_len = 0
             row.append_text(piece)
             row.append("  ")
             line_len += piece.cell_len + 2
+        if note:
+            row.append(f"  {note}" if ids else note, style="dim italic")
         grid.add_row(Text(label.ljust(label_w), style=style), row)
     return grid
 
@@ -93,6 +98,7 @@ def render_table(
     prompt: Text | None = None,
     hand_view: RenderableType | None = None,
     hand_title: str = "",
+    names: bool = True,
 ) -> Panel:
     s = engine.state
     parts: list[RenderableType] = []
@@ -114,7 +120,7 @@ def render_table(
 
     cur = Text("Quân mới: ")
     if s.pending_card_id:
-        cur.append_text(card_text(card(s.pending_card_id), ascii_only))
+        cur.append_text(card_text(card(s.pending_card_id), ascii_only, names=names))
         origin = "bốc nọc" if s.pending_origin == "draw" else "đánh ra"
         cur.append(f" từ {s.pending_from} ({origin})")
         if s.phase == Phase.CLAIM_WINDOW:
@@ -123,7 +129,7 @@ def render_table(
         last = s.discard_pile[-1]
         cur.append("— ", style="dim")
         cur.append("(quân vừa bỏ: ", style="dim")
-        cur.append_text(card_text(card(last.card_id), ascii_only))
+        cur.append_text(card_text(card(last.card_id), ascii_only, names=names))
         cur.append(f" của {last.seat})", style="dim")
     else:
         cur.append("—", style="dim")
@@ -131,7 +137,7 @@ def render_table(
 
     recent = Text("Bài đã bỏ: ", style="dim")
     for ev in s.discard_pile[-8:]:
-        recent.append_text(card_text(card(ev.card_id), ascii_only))
+        recent.append_text(card_text(card(ev.card_id), ascii_only, names=names))
         recent.append(f"({ev.seat}) ", style="dim")
     if not s.discard_pile:
         recent.append("—")
