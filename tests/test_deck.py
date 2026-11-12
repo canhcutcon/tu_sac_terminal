@@ -41,3 +41,13 @@ def test_deal_sizes_and_uniqueness(dealer):
 def test_shuffle_is_deterministic_per_seed():
     assert [c.id for c in shuffled_deck(7)] == [c.id for c in shuffled_deck(7)]
     assert [c.id for c in shuffled_deck(7)] != [c.id for c in shuffled_deck(8)]
+
+
+def test_han_glyphs_follow_color_group():
+    from tusac.models import han
+
+    red_yellow = "帥仕相俥炮傌卒"
+    white_green = "將士象車包馬兵"
+    for color, expected in ((Color.RED, red_yellow), (Color.YELLOW, red_yellow),
+                            (Color.WHITE, white_green), (Color.GREEN, white_green)):
+        assert "".join(han(color, r) for r in Rank) == expected

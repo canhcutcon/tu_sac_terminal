@@ -10,7 +10,7 @@ from rich.text import Text
 
 from .deck import card
 from .engine import Engine, meld_label
-from .models import COLOR_VI, PHASE_VI, RANK_HAN, SEATS, Card, Color, Phase
+from .models import COLOR_VI, PHASE_VI, SEATS, Card, Color, Phase, han
 
 COLOR_STYLE = {
     Color.RED: "bold red",
@@ -21,7 +21,7 @@ COLOR_STYLE = {
 
 
 def card_label(c: Card, ascii_only: bool) -> str:
-    return c.name_vi() if ascii_only else f"{c.name_vi()} {RANK_HAN[c.rank]}"
+    return c.name_vi() if ascii_only else f"{c.name_vi()} {han(c.color, c.rank)}"
 
 
 def card_text(c: Card, ascii_only: bool, index: int | None = None, names: bool = True) -> Text:
@@ -30,7 +30,7 @@ def card_text(c: Card, ascii_only: bool, index: int | None = None, names: bool =
     if index is not None:
         t.append(f"[{index:02d}]", style="cyan")
         t.append(" ")
-    label = card_label(c, ascii_only) if names or ascii_only else RANK_HAN[c.rank]
+    label = card_label(c, ascii_only) if names or ascii_only else han(c.color, c.rank)
     t.append(label, style=COLOR_STYLE[c.color])
     return t
 

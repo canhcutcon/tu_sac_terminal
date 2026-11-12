@@ -77,3 +77,5 @@ src/tusac/
   render.py, cli.py  giao diện Rich và vòng lặp lệnh
 tests/             deck, melds, engine, invariants (1.000 ván), persistence, cli
 ```
+
+![alt text](image.png)

@@ -34,15 +34,30 @@ RANK_VI = {
     Rank.HORSE: "Mã",
     Rank.PAWN: "Tốt",
 }
-RANK_HAN = {
+# Chữ Hán theo kiểu in truyền thống: Đỏ/Vàng dùng một bộ chữ, Trắng/Xanh dùng bộ chữ còn lại.
+HAN_RED_YELLOW = {
+    Rank.GENERAL: "帥",
+    Rank.ADVISOR: "仕",
+    Rank.ELEPHANT: "相",
+    Rank.CHARIOT: "俥",
+    Rank.CANNON: "炮",
+    Rank.HORSE: "傌",
+    Rank.PAWN: "卒",
+}
+HAN_WHITE_GREEN = {
     Rank.GENERAL: "將",
     Rank.ADVISOR: "士",
     Rank.ELEPHANT: "象",
     Rank.CHARIOT: "車",
-    Rank.CANNON: "砲",
+    Rank.CANNON: "包",
     Rank.HORSE: "馬",
-    Rank.PAWN: "卒",
+    Rank.PAWN: "兵",
 }
+
+
+def han(color: Color, rank: Rank) -> str:
+    table = HAN_RED_YELLOW if color in (Color.RED, Color.YELLOW) else HAN_WHITE_GREEN
+    return table[rank]
 
 SEATS: tuple[str, ...] = ("A", "B", "C", "D")
 COPIES = 4
