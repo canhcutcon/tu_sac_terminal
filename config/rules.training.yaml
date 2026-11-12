@@ -1,0 +1,17 @@
+# Profile luyện tập: luật tối thiểu, minh bạch. Đây là LỰA CHỌN KỸ THUẬT cho chế độ học,
+# KHÔNG phải tuyên bố luật Tứ Sắc truyền thống / "chuẩn Nha Trang".
+ruleset: training_basic
+allow_pawn_multicolor_trio: true
+allow_pawn_multicolor_quad: true
+lone_general_ok: true
+pairs_count_as_meld: true
+mandatory_pair_claim: false
+khap_exposure: confirm_before_apply   # confirm_before_apply | auto
+forbid_split_khap: false
+no_increase_trash: warn_only          # off | warn_only | enforce
+penalty_mode: disabled
+priority_policy: explicit_order       # Tới > Quàn > Khạp > bộ khác; hòa thì nhà gần người đánh hơn
+win_any_seat: true
+claim_next_seat_kinds: [pair, triplet, quad, odd_gae, odd_cch, pawn_trio, pawn_quad]
+claim_any_seat_kinds: [triplet, quad]
+stock_empty: draw_game

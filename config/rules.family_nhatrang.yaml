@@ -1,0 +1,23 @@
+# Profile theo quy ước người nhà — KHÔNG phải luật "chuẩn Nha Trang".
+# Điền theo checklist (mục 13 của đặc tả) sau khi hỏi lại người nhà:
+#  - Đang giữ đôi mà quân thứ ba xuất hiện có bắt buộc ăn không?  -> mandatory_pair_claim
+#  - Khạp/quàn có bắt buộc khui khi có quân thứ tư?                -> khap_exposure: auto
+#  - Có cấm tách khạp khi đánh?                                    -> forbid_split_khap
+#  - Có luật "không tăng rác"?                                     -> no_increase_trash
+#  - Nhà nào được ăn những bộ nào?                                 -> claim_*_seat_kinds
+#  - Tới/đền/tính điểm: chưa hỗ trợ (penalty_mode chỉ có disabled)
+ruleset: family_nhatrang
+allow_pawn_multicolor_trio: true
+allow_pawn_multicolor_quad: true
+lone_general_ok: true
+pairs_count_as_meld: true
+mandatory_pair_claim: true
+khap_exposure: auto
+forbid_split_khap: true
+no_increase_trash: warn_only
+penalty_mode: disabled
+priority_policy: explicit_order
+win_any_seat: true
+claim_next_seat_kinds: [pair, triplet, quad, odd_gae, odd_cch, pawn_trio, pawn_quad]
+claim_any_seat_kinds: [triplet, quad]
+stock_empty: draw_game
