@@ -12,7 +12,7 @@ Game bài **Tứ Sắc** chơi trong terminal: 1 người + 3 bot, luật cấu 
 python3.11 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 python -m pip install -e ".[dev]"
-
+cd tu_sac_terminal
 python -m tusac                    # chơi (bạn ngồi D, nhà cái A, seed ngẫu nhiên)
 python -m tusac --seed 42 --seat D --dealer D --bots easy,medium,medium
 python -m tusac --rules family_nhatrang     # hoặc --rules duong/dan/luat.yaml
